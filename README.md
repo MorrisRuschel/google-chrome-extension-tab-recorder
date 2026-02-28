@@ -30,12 +30,16 @@ Extensão Chrome (Manifest V3) que grava **vídeo + áudio** da aba atual e ofer
 ## Estrutura
 
 ```
-extension/
-├── manifest.json
-├── popup.html / popup.js
-├── background.js
-├── recorder.html / recorder.js
-└── README.md (este arquivo)
+google-chrome-extension-tab-recorder/
+├── README.md          (este arquivo)
+├── LICENSE
+└── extension/
+    ├── manifest.json
+    ├── popup.html
+    ├── popup.js
+    ├── background.js
+    ├── recorder.html
+    └── recorder.js
 ```
 
 ---
