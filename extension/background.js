@@ -9,7 +9,7 @@ let recorderTabId = null;
 let chunks = [];
 let timerStart = null;
 let timerInterval = null;
-let elapsedSeconds = 0;
+let pausedElapsed = 0; // segundos já gravados quando pausado
 let folder = 'Recordings';
 let filename = 'tab-recording.webm';
 
@@ -52,11 +52,9 @@ chrome.runtime.onConnect.addListener((port) => {
 
 function startTimer() {
   timerStart = Date.now();
-  elapsedSeconds = 0;
+  pausedElapsed = 0;
   if (timerInterval) clearInterval(timerInterval);
-  timerInterval = setInterval(() => {
-    elapsedSeconds = Math.floor((Date.now() - timerStart) / 1000);
-  }, 1000);
+  timerInterval = null;
 }
 
 function stopTimer() {
@@ -64,13 +62,21 @@ function stopTimer() {
     clearInterval(timerInterval);
     timerInterval = null;
   }
+  timerStart = null;
+  pausedElapsed = 0;
 }
 
 function getStatus() {
+  let elapsedSeconds = 0;
+  if (state === 'recording' && timerStart != null) {
+    elapsedSeconds = Math.floor((Date.now() - timerStart) / 1000);
+  } else if (state === 'paused') {
+    elapsedSeconds = pausedElapsed;
+  }
   const mm = Math.floor(elapsedSeconds / 60);
   const ss = elapsedSeconds % 60;
   const timer = `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
-  return { state, timer, elapsedSeconds };
+  return { state, timer, elapsedSeconds, folder, filename };
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -117,20 +123,34 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 
   if (msg.action === 'STOP') {
+    const f = (msg.folder != null && msg.folder !== '') ? String(msg.folder).trim() : null;
+    const n = (msg.filename != null && msg.filename !== '') ? String(msg.filename).trim() : null;
+    if (f != null) folder = f.replace(/\/$/, '');
+    if (n != null) filename = n.endsWith('.webm') ? n : n + '.webm';
     chrome.storage.local.get(['recorderTabId', 'downloadFolder', 'downloadFilename'], (data) => {
       const tabId = recorderTabId ?? data.recorderTabId;
-      const f = folder || data.downloadFolder || 'Recordings';
-      const n = filename || data.downloadFilename || 'tab-recording.webm';
+      const sendFolder = folder || data.downloadFolder || 'Recordings';
+      const sendFilename = filename || data.downloadFilename || 'tab-recording.webm';
       if (tabId != null) {
-        sendToRecorder(tabId, { action: 'STOP', folder: f, filename: n });
+        sendToRecorder(tabId, { action: 'STOP', folder: sendFolder, filename: sendFilename });
       }
     });
     sendResponse({ ok: true });
     return true;
   }
 
+  if (msg.action === 'GET_SAVE_PATH') {
+    chrome.storage.local.get(['downloadFolder', 'downloadFilename'], (data) => {
+      const f = folder || data.downloadFolder || 'Recordings';
+      const n = filename || data.downloadFilename || 'tab-recording.webm';
+      sendResponse({ folder: f, filename: n });
+    });
+    return true;
+  }
+
   if (msg.action === 'PAUSE') {
-    if (state === 'recording') {
+    if (state === 'recording' && timerStart != null) {
+      pausedElapsed = Math.floor((Date.now() - timerStart) / 1000);
       state = 'paused';
       if (timerInterval) {
         clearInterval(timerInterval);
@@ -144,12 +164,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.action === 'RESUME') {
     if (state === 'paused') {
+      timerStart = Date.now() - pausedElapsed * 1000;
       state = 'recording';
-      if (timerStart != null) {
-        timerInterval = setInterval(() => {
-          elapsedSeconds = Math.floor((Date.now() - timerStart) / 1000);
-        }, 1000);
-      }
       if (recorderTabId != null) sendToRecorder(recorderTabId, { action: 'RESUME' });
     }
     sendResponse({ ok: true });

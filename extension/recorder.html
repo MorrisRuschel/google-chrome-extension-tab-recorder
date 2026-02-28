@@ -2,9 +2,132 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Tab Recorder</title>
+  <title>Tab Recorder — Gravação</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      width: 380px;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      font-size: 13px;
+      margin: 0;
+      padding: 12px;
+      background: #1a1a1e;
+      color: #e4e4e7;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #3f3f46;
+    }
+    .header a { color: #a78bfa; text-decoration: none; font-size: 12px; }
+    .header a:hover { text-decoration: underline; }
+    .header img { height: 32px; width: auto; display: block; }
+    .alert {
+      background: #422006;
+      color: #fcd34d;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      border: 1px solid #78350f;
+    }
+    .bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .bar .btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .btn-stop { background: #404040; color: #fff; }
+    .btn-stop:hover:not(:disabled) { background: #525252; }
+    .btn-pause { background: #ca8a04; color: #000; }
+    .btn-pause:hover:not(:disabled) { background: #eab308; }
+    .btn-audio { background: #374151; color: #fff; }
+    .btn-audio:hover:not(:disabled) { background: #4b5563; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status {
+      margin-bottom: 14px;
+      padding: 8px 10px;
+      background: #27272a;
+      border-radius: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-idle { color: #71717a; }
+    .status-recording { color: #f87171; }
+    .status-paused { color: #facc15; }
+    .timer { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .history-title {
+      font-size: 12px;
+      color: #a1a1aa;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .history-title button {
+      background: transparent;
+      border: 1px solid #3f3f46;
+      color: #a1a1aa;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .history-title button:hover { background: #27272a; color: #e4e4e7; }
+    .history-list {
+      background: #27272a;
+      border-radius: 6px;
+      padding: 6px 0;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .history-item {
+      padding: 6px 10px;
+      font-size: 11px;
+      color: #a1a1aa;
+      border-bottom: 1px solid #3f3f46;
+    }
+    .history-item:last-child { border-bottom: none; }
+    .history-empty { padding: 12px; color: #71717a; font-size: 12px; text-align: center; }
+  </style>
 </head>
 <body>
+  <div class="header">
+    <img src="logo.png" alt="Tab Recorder">
+    <a href="https://github.com/MorrisRuschel/google-chrome-extension-tab-recorder" target="_blank" rel="noopener">GitHub →</a>
+  </div>
+  <div class="alert" role="alert">
+    ⚠️ Não feche esta janela. Ela precisa permanecer aberta para gravar vídeo e áudio.
+  </div>
+  <div class="bar">
+    <button type="button" class="btn btn-pause" id="btnPause" title="Pausar / Retomar" disabled>⏸ Pausar</button>
+    <button type="button" class="btn btn-stop" id="btnStop" title="Parar e salvar" disabled>■ Stop</button>
+    <button type="button" class="btn btn-audio" id="btnAudio" title="Mute / Unmute áudio" disabled>🔊 Áudio</button>
+  </div>
+  <div class="status status-idle" id="status">
+    <span id="statusText">Aguardando…</span>
+    <span class="timer" id="timer">00:00</span>
+  </div>
+  <div class="history-title">
+    <span>Últimas gravações</span>
+    <button type="button" id="btnClearHistory">Limpar histórico</button>
+  </div>
+  <div class="history-list" id="historyList">
+    <div class="history-empty" id="historyEmpty">Nenhuma gravação ainda.</div>
+  </div>
   <script src="recorder.js"></script>
 </body>
 </html>

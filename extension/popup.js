@@ -92,22 +92,30 @@
     }
 
     const recorderUrl = chrome.runtime.getURL('recorder.html');
-    const tab = await chrome.tabs.create({ url: recorderUrl, active: false });
-    recorderTabId = tab.id;
-
-    await new Promise((resolve) => {
-      const listener = (tabId, info) => {
-        if (tabId === tab.id && info.status === 'complete') {
+    let tab = null;
+    let tabWasCreated = false;
+    const existing = await chrome.tabs.query({ url: recorderUrl });
+    if (existing.length > 0) {
+      tab = existing[0];
+      recorderTabId = tab.id;
+    } else {
+      tabWasCreated = true;
+      tab = await chrome.tabs.create({ url: recorderUrl, active: false });
+      recorderTabId = tab.id;
+      await new Promise((resolve) => {
+        const listener = (tabId, info) => {
+          if (tabId === tab.id && info.status === 'complete') {
+            chrome.tabs.onUpdated.removeListener(listener);
+            resolve();
+          }
+        };
+        chrome.tabs.onUpdated.addListener(listener);
+        if (tab.status === 'complete') {
           chrome.tabs.onUpdated.removeListener(listener);
           resolve();
         }
-      };
-      chrome.tabs.onUpdated.addListener(listener);
-      if (tab.status === 'complete') {
-        chrome.tabs.onUpdated.removeListener(listener);
-        resolve();
-      }
-    });
+      });
+    }
 
     try {
       const streamId = await chrome.tabCapture.getMediaStreamId({
@@ -129,13 +137,16 @@
       startPolling();
     } catch (e) {
       statusText.textContent = 'Erro: ' + (e.message || 'captura não permitida');
-      if (recorderTabId) chrome.tabs.remove(recorderTabId);
+      if (tabWasCreated && recorderTabId) chrome.tabs.remove(recorderTabId);
       recorderTabId = null;
     }
   });
 
   btnStop.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'STOP' });
+    const folder = folderInput.value.trim() || 'Recordings';
+    let filename = filenameInput.value.trim() || defaultFilename();
+    if (!filename.endsWith('.webm')) filename += '.webm';
+    chrome.runtime.sendMessage({ action: 'STOP', folder, filename });
     stopPolling();
     recorderTabId = null;
     updateUI({ state: 'idle', timer: '00:00' });
@@ -156,6 +167,23 @@
 
   folderInput.addEventListener('change', saveStorage);
   filenameInput.addEventListener('change', saveStorage);
+
+  const recorderPageUrl = chrome.runtime.getURL('recorder.html');
+  const linkRecorderPage = document.getElementById('linkRecorderPage');
+  if (linkRecorderPage) {
+    linkRecorderPage.addEventListener('click', (e) => {
+      e.preventDefault();
+      chrome.tabs.query({ url: recorderPageUrl }, (tabs) => {
+        if (tabs.length > 0) {
+          const tab = tabs[0];
+          chrome.tabs.update(tab.id, { active: true });
+          chrome.windows.update(tab.windowId, { focused: true });
+        } else {
+          chrome.tabs.create({ url: recorderPageUrl });
+        }
+      });
+    });
+  }
 
   loadStorage();
   chrome.runtime.sendMessage({ action: 'STATUS' }, (res) => {
