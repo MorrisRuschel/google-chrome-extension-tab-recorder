@@ -67,6 +67,9 @@
     .status-recording { color: #f87171; }
     .status-paused { color: #facc15; }
     .timer { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .footer { margin-top: 12px; padding-top: 8px; border-top: 1px solid #3f3f46; }
+    .footer a { color: #a78bfa; font-size: 12px; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -87,6 +90,9 @@
   <div class="status status-idle" id="status">
     <span id="statusText">Idle</span>
     <span class="timer" id="timer">00:00</span>
+  </div>
+  <div class="footer">
+    <a href="#" id="linkRecorderPage" title="Abrir ou ir para a página de gravação">📄 Página de gravação</a>
   </div>
   <script src="popup.js"></script>
 </body>
