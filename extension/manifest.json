@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Recorder",
+  "version": "1.0.0",
+  "description": "Grava vídeo e áudio ou só o áudio da aba atual; barra de comandos (Gravar / Stop / Salvar em…)",
+  "author": "Morris Ruschel (Mad Wolf)",
+  "icons": {
+    "16": "logo.png",
+    "48": "logo.png",
+    "128": "logo.png"
+  },
+  "permissions": [
+    "tabCapture",
+    "downloads",
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_icon": {
+      "16": "logo.png",
+      "32": "logo.png",
+      "48": "logo.png"
+    },
+    "default_popup": "popup.html",
+    "default_title": "Tab Recorder"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
