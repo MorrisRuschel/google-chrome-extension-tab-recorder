@@ -4,3 +4,6 @@ Thumbs.db
 
 # Assets locais de divulgação
 social/
+
+# Notas e documentação local (não versionada)
+docs/
