@@ -1,232 +1,169 @@
 /**
- * Popup: lê/grava Folder e Filename no storage, envia comandos ao background e ao recorder tab.
- * Atualiza UI e faz poll de status (timer e estado).
+ * Popup: lê/grava pasta, arquivo e modo no storage e inicia a gravação.
+ * Os controles de Pausar / Parar / Áudio e o status vêm de common.js.
  * @author Morris Ruschel (Mad Wolf)
  */
 (function () {
+  applyI18n();
+
   const btnRecord = document.getElementById('btnRecord');
-  const btnPause = document.getElementById('btnPause');
-  const btnStop = document.getElementById('btnStop');
-  const btnAudio = document.getElementById('btnAudio');
   const folderInput = document.getElementById('folder');
   const filenameInput = document.getElementById('filename');
   const recordModeSelect = document.getElementById('recordMode');
-  const statusEl = document.getElementById('status');
-  const statusText = document.getElementById('statusText');
-  const timerEl = document.getElementById('timer');
+  const messageEl = document.getElementById('message');
+  const recorderUrl = chrome.runtime.getURL('recorder.html');
 
-  let recorderTabId = null;
-  let pollInterval = null;
-  let isMuted = false;
+  // Nome gerado por defaultFilename(); não é guardado no storage para não ficar com data antiga.
+  const AUTO_FILENAME = /^tab(-audio)?-\d{4}-\d{2}-\d{2}-\d{4}\.webm$/;
+
   let recordClickInProgress = false;
+  let lastStatus = { state: 'idle' };
+  let firstStatus = true;
 
   function isAudioOnlyMode() {
-    return recordModeSelect && recordModeSelect.value === 'audio';
+    return recordModeSelect.value === 'audio';
   }
 
   function defaultFilename(audioOnly) {
     const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const h = String(d.getHours()).padStart(2, '0');
-    const min = String(d.getMinutes()).padStart(2, '0');
+    const pad = (n) => String(n).padStart(2, '0');
     const prefix = audioOnly ? 'tab-audio' : 'tab';
-    return `${prefix}-${y}-${m}-${day}-${h}${min}.webm`;
+    return `${prefix}-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.webm`;
   }
 
-  function loadStorage() {
-    chrome.storage.local.get({ folder: 'Recordings', filename: '', recordMode: 'video' }, (data) => {
-      folderInput.value = data.folder || 'Recordings';
-      if (recordModeSelect) recordModeSelect.value = data.recordMode === 'audio' ? 'audio' : 'video';
-      const audioOnly = data.recordMode === 'audio';
-      if (!data.filename) filenameInput.value = defaultFilename(audioOnly);
-      else filenameInput.value = data.filename;
-    });
+  function currentFilename(audioOnly) {
+    return filenameInput.value.trim() || defaultFilename(audioOnly);
+  }
+
+  function showMessage(text) {
+    messageEl.textContent = text || '';
+    messageEl.hidden = !text;
+  }
+
+  async function loadStorage() {
+    const data = await chrome.storage.local.get({ folder: 'Recordings', filename: '', recordMode: 'video' });
+    // Durante uma gravação, os campos mostram o que o background está usando (ver onStatus).
+    if (!firstStatus && lastStatus.state !== 'idle') return;
+    folderInput.value = data.folder || 'Recordings';
+    recordModeSelect.value = data.recordMode === 'audio' ? 'audio' : 'video';
+    filenameInput.value = data.filename || defaultFilename(isAudioOnlyMode());
   }
 
   function saveStorage() {
-    const audioOnly = isAudioOnlyMode();
+    const filename = filenameInput.value.trim();
     chrome.storage.local.set({
       folder: folderInput.value.trim() || 'Recordings',
-      filename: filenameInput.value.trim() || defaultFilename(audioOnly),
-      recordMode: audioOnly ? 'audio' : 'video'
+      filename: AUTO_FILENAME.test(filename) ? '' : filename,
+      recordMode: isAudioOnlyMode() ? 'audio' : 'video'
     });
   }
 
-  function updateUI(s) {
-    const recordingLabel = s.audioOnly ? 'Gravando (áudio)' : 'Gravando';
-    const pausedLabel = s.audioOnly ? 'Pausado (áudio)' : 'Pausado';
-    statusText.textContent =
-      s.state === 'recording' ? recordingLabel : s.state === 'paused' ? pausedLabel : 'Idle';
-    timerEl.textContent = s.timer || '00:00';
-    statusEl.className = 'status status-' + (s.state === 'recording' ? 'recording' : s.state === 'paused' ? 'paused' : 'idle');
-    const recording = s.state === 'recording' || s.state === 'paused';
-    btnRecord.disabled = recording;
-    btnStop.disabled = !recording;
-    btnPause.disabled = !recording;
-    btnAudio.disabled = !recording;
-    if (recordModeSelect) recordModeSelect.disabled = recording;
-    btnPause.textContent = s.state === 'paused' ? '▶ Retomar' : '⏸ Pausar';
-    btnAudio.textContent = isMuted ? '🔇 Mudo' : '🔊 Áudio';
-  }
-
-  function pollStatus() {
-    chrome.runtime.sendMessage({ action: 'STATUS' }, (res) => {
-      if (res) updateUI(res);
-    });
-  }
-
-  function startPolling() {
-    if (pollInterval) clearInterval(pollInterval);
-    pollInterval = setInterval(pollStatus, 500);
-    pollStatus();
-  }
-
-  function stopPolling() {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      pollInterval = null;
+  function onStatus(s) {
+    lastStatus = s;
+    const busy = s.state !== 'idle';
+    if (firstStatus && busy) {
+      folderInput.value = s.folder;
+      filenameInput.value = s.filename;
+      recordModeSelect.value = s.audioOnly ? 'audio' : 'video';
     }
-    chrome.runtime.sendMessage({ action: 'STATUS' }, (res) => {
-      if (res) updateUI(res);
+    firstStatus = false;
+    btnRecord.disabled = busy || recordClickInProgress;
+    recordModeSelect.disabled = busy;
+    if (s.state === 'idle' && s.error && messageEl.hidden) showMessage(t('errorPrefix', [s.error]));
+  }
+
+  const controls = initControls({
+    onStatus,
+    stopPayload: () => ({
+      folder: folderInput.value,
+      filename: currentFilename(lastStatus.audioOnly === true)
+    })
+  });
+
+  /** Reutiliza a aba do recorder se já existir; senão cria e espera carregar. */
+  async function getRecorderTab() {
+    const existing = await chrome.tabs.query({ url: recorderUrl });
+    if (existing.length > 0) return { tabId: existing[0].id, created: false };
+    const tab = await chrome.tabs.create({ url: recorderUrl, active: false });
+    await new Promise((resolve) => {
+      const listener = (tabId, info) => {
+        if (tabId === tab.id && info.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+      if (tab.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(listener);
+        resolve();
+      }
     });
+    return { tabId: tab.id, created: true };
   }
 
   btnRecord.addEventListener('click', async () => {
     if (recordClickInProgress || btnRecord.disabled) return;
     recordClickInProgress = true;
+    btnRecord.disabled = true;
+    showMessage('');
     saveStorage();
-    const folder = folderInput.value.trim() || 'Recordings';
     const audioOnly = isAudioOnlyMode();
-    let filename = filenameInput.value.trim();
-    if (!filename) filename = defaultFilename(audioOnly);
-    if (!filename.endsWith('.webm')) filename += '.webm';
-
-    const [targetTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-    if (!targetTab || !targetTab.id) {
-      statusText.textContent = 'Erro: nenhuma aba ativa';
-      return;
-    }
-
-    const recorderUrl = chrome.runtime.getURL('recorder.html');
-    let tab = null;
+    let recorderTabId = null;
     let tabWasCreated = false;
-    const existing = await chrome.tabs.query({ url: recorderUrl });
-    if (existing.length > 0) {
-      tab = existing[0];
-      recorderTabId = tab.id;
-    } else {
-      tabWasCreated = true;
-      tab = await chrome.tabs.create({ url: recorderUrl, active: false });
-      recorderTabId = tab.id;
-      await new Promise((resolve) => {
-        const listener = (tabId, info) => {
-          if (tabId === tab.id && info.status === 'complete') {
-            chrome.tabs.onUpdated.removeListener(listener);
-            resolve();
-          }
-        };
-        chrome.tabs.onUpdated.addListener(listener);
-        if (tab.status === 'complete') {
-          chrome.tabs.onUpdated.removeListener(listener);
-          resolve();
-        }
-      });
-    }
 
     try {
+      const [targetTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      if (!targetTab || targetTab.id == null) {
+        showMessage(t('errorNoActiveTab'));
+        return;
+      }
+
+      ({ tabId: recorderTabId, created: tabWasCreated } = await getRecorderTab());
+
       const streamId = await chrome.tabCapture.getMediaStreamId({
         targetTabId: targetTab.id,
         consumerTabId: recorderTabId
       });
 
-      await chrome.runtime.sendMessage({
-        action: 'START_WITH_STREAM_ID',
+      const res = await chrome.runtime.sendMessage({
+        action: 'START',
         streamId,
         recorderTabId,
+        folder: folderInput.value,
+        filename: currentFilename(audioOnly),
         audioOnly
       });
-      await chrome.runtime.sendMessage({
-        action: 'START',
-        recorderTabId,
-        folder,
-        filename,
-        audioOnly
-      });
-      startPolling();
+      if (!res || !res.ok) throw new Error(res && res.error);
+
+      // Próxima gravação ganha um nome novo com data/hora.
+      chrome.storage.local.set({ filename: '' });
     } catch (e) {
-      statusText.textContent = 'Erro: ' + (e.message || 'captura não permitida');
-      if (tabWasCreated && recorderTabId) chrome.tabs.remove(recorderTabId);
-      recorderTabId = null;
+      showMessage(t('errorPrefix', [(e && e.message) || t('errorCaptureDefault')]));
+      if (tabWasCreated && recorderTabId != null) chrome.tabs.remove(recorderTabId).catch(() => {});
     } finally {
       recordClickInProgress = false;
+      controls.refresh();
     }
-  });
-
-  btnStop.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'STATUS' }, (res) => {
-      const folder = folderInput.value.trim() || 'Recordings';
-      const audioOnly =
-        res && (res.state === 'recording' || res.state === 'paused')
-          ? res.audioOnly === true
-          : isAudioOnlyMode();
-      let filename = filenameInput.value.trim() || defaultFilename(audioOnly);
-      if (!filename.endsWith('.webm')) filename += '.webm';
-      chrome.runtime.sendMessage({ action: 'STOP', folder, filename });
-      stopPolling();
-      recorderTabId = null;
-      updateUI({ state: 'idle', timer: '00:00' });
-    });
-  });
-
-  btnPause.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'STATUS' }, (res) => {
-      const action = res && res.state === 'paused' ? 'RESUME' : 'PAUSE';
-      chrome.runtime.sendMessage({ action }, () => pollStatus());
-    });
-  });
-
-  btnAudio.addEventListener('click', () => {
-    isMuted = !isMuted;
-    chrome.runtime.sendMessage({ action: isMuted ? 'MUTE_AUDIO' : 'UNMUTE_AUDIO' });
-    btnAudio.textContent = isMuted ? '🔇 Mudo' : '🔊 Áudio';
   });
 
   folderInput.addEventListener('change', saveStorage);
   filenameInput.addEventListener('change', saveStorage);
-  if (recordModeSelect) {
-    recordModeSelect.addEventListener('change', () => {
-      saveStorage();
-      chrome.runtime.sendMessage({ action: 'STATUS' }, (res) => {
-        if (res && (res.state === 'recording' || res.state === 'paused')) return;
-        if (!filenameInput.value.trim()) {
-          filenameInput.value = defaultFilename(isAudioOnlyMode());
-        }
-      });
-    });
-  }
+  recordModeSelect.addEventListener('change', () => {
+    const name = filenameInput.value.trim();
+    if (!name || AUTO_FILENAME.test(name)) filenameInput.value = defaultFilename(isAudioOnlyMode());
+    saveStorage();
+  });
 
-  const recorderPageUrl = chrome.runtime.getURL('recorder.html');
-  const linkRecorderPage = document.getElementById('linkRecorderPage');
-  if (linkRecorderPage) {
-    linkRecorderPage.addEventListener('click', (e) => {
-      e.preventDefault();
-      chrome.tabs.query({ url: recorderPageUrl }, (tabs) => {
-        if (tabs.length > 0) {
-          const tab = tabs[0];
-          chrome.tabs.update(tab.id, { active: true });
-          chrome.windows.update(tab.windowId, { focused: true });
-        } else {
-          chrome.tabs.create({ url: recorderPageUrl });
-        }
-      });
-    });
-  }
+  document.getElementById('linkRecorderPage').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const tabs = await chrome.tabs.query({ url: recorderUrl });
+    if (tabs.length > 0) {
+      chrome.tabs.update(tabs[0].id, { active: true });
+      chrome.windows.update(tabs[0].windowId, { focused: true });
+    } else {
+      chrome.tabs.create({ url: recorderUrl });
+    }
+  });
 
   loadStorage();
-  chrome.runtime.sendMessage({ action: 'STATUS' }, (res) => {
-    if (res) updateUI(res);
-    else updateUI({ state: 'idle', timer: '00:00' });
-  });
 })();
