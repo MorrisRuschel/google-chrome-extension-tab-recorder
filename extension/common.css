@@ -1,0 +1,57 @@
+* { box-sizing: border-box; }
+body {
+  width: 380px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 13px;
+  margin: 0;
+  background: #1a1a1e;
+  color: #e4e4e7;
+}
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+.btn-record { background: #dc2626; color: #fff; }
+.btn-record:hover:not(:disabled) { background: #b91c1c; }
+.btn-stop { background: #404040; color: #fff; }
+.btn-stop:hover:not(:disabled) { background: #525252; }
+.btn-pause { background: #ca8a04; color: #000; }
+.btn-pause:hover:not(:disabled) { background: #eab308; }
+.btn-audio { background: #374151; color: #fff; }
+.btn-audio:hover:not(:disabled) { background: #4b5563; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.status {
+  padding: 8px 10px;
+  background: #27272a;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.status-idle { color: #71717a; }
+.status-recording { color: #f87171; }
+.status-paused { color: #facc15; }
+.status-saving { color: #60a5fa; }
+.timer { font-variant-numeric: tabular-nums; font-weight: 600; }
+.message {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #450a0a;
+  border: 1px solid #7f1d1d;
+  color: #fca5a5;
+  font-size: 12px;
+}
+a { color: #a78bfa; text-decoration: none; font-size: 12px; }
+a:hover { text-decoration: underline; }

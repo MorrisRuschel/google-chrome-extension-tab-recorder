@@ -1,0 +1,48 @@
+{
+  "extName": { "message": "Tab Recorder" },
+  "extDescription": { "message": "Records video and audio, or audio only, from the current tab; command bar (Record / Stop / Save to…)" },
+
+  "btnRecord": { "message": "● Record" },
+  "btnRecordTitle": { "message": "Record the current tab" },
+  "btnPause": { "message": "⏸ Pause" },
+  "btnResume": { "message": "▶ Resume" },
+  "btnPauseTitle": { "message": "Pause / Resume" },
+  "btnStop": { "message": "■ Stop" },
+  "btnStopTitle": { "message": "Stop and save" },
+  "btnAudio": { "message": "🔊 Audio" },
+  "btnMuted": { "message": "🔇 Muted" },
+  "btnAudioTitle": { "message": "Mute / unmute the recorded audio" },
+
+  "labelFolder": { "message": "Folder" },
+  "labelFile": { "message": "File" },
+  "labelMode": { "message": "Mode" },
+  "modeTitle": { "message": "Video + audio, or only the tab's audio" },
+  "modeVideo": { "message": "Video + audio" },
+  "modeAudio": { "message": "Audio only" },
+
+  "statusIdle": { "message": "Idle" },
+  "statusRecording": { "message": "Recording" },
+  "statusRecordingAudio": { "message": "Recording (audio)" },
+  "statusPaused": { "message": "Paused" },
+  "statusPausedAudio": { "message": "Paused (audio)" },
+  "statusSaving": { "message": "Saving…" },
+
+  "linkRecorderPage": { "message": "📄 Recording page" },
+  "linkRecorderPageTitle": { "message": "Open or go to the recording page" },
+
+  "recorderTitle": { "message": "Tab Recorder — Recording" },
+  "recorderAlert": { "message": "⚠️ Do not close this tab. It must stay open to record video and audio." },
+  "historyTitle": { "message": "Recent recordings" },
+  "historyClear": { "message": "Clear history" },
+  "historyEmpty": { "message": "No recordings yet." },
+  "unsavedMessage": { "message": "The last recording was not saved." },
+  "btnRetrySave": { "message": "Save again" },
+  "btnDiscard": { "message": "Discard" },
+
+  "errorNoActiveTab": { "message": "Error: no active tab" },
+  "errorCaptureDefault": { "message": "capture not allowed" },
+  "errorPrefix": {
+    "message": "Error: $ERROR$",
+    "placeholders": { "error": { "content": "$1" } }
+  }
+}

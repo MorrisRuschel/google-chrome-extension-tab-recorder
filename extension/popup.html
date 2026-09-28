@@ -2,42 +2,10 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Tab Recorder</title>
+  <title data-i18n="extName">Tab Recorder</title>
+  <link rel="stylesheet" href="common.css">
   <style>
-    * { box-sizing: border-box; }
-    body {
-      width: 380px;
-      font-family: ui-sans-serif, system-ui, sans-serif;
-      font-size: 13px;
-      margin: 0;
-      padding: 10px;
-      background: #1a1a1e;
-      color: #e4e4e7;
-    }
-    .bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-    .bar .btn {
-      padding: 6px 12px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 500;
-    }
-    .btn-record { background: #dc2626; color: #fff; }
-    .btn-record:hover:not(:disabled) { background: #b91c1c; }
-    .btn-stop { background: #404040; color: #fff; }
-    .btn-stop:hover:not(:disabled) { background: #525252; }
-    .btn-pause { background: #ca8a04; color: #000; }
-    .btn-pause:hover:not(:disabled) { background: #eab308; }
-    .btn-audio { background: #374151; color: #fff; }
-    .btn-audio:hover:not(:disabled) { background: #4b5563; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    body { padding: 10px; }
     .row {
       display: flex;
       gap: 8px;
@@ -54,53 +22,41 @@
       color: #e4e4e7;
       font-size: 12px;
     }
-    .status {
-      margin-top: 10px;
-      padding: 8px;
-      background: #27272a;
-      border-radius: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .status-idle { color: #71717a; }
-    .status-recording { color: #f87171; }
-    .status-paused { color: #facc15; }
-    .timer { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .status { margin-top: 10px; }
     .footer { margin-top: 12px; padding-top: 8px; border-top: 1px solid #3f3f46; }
-    .footer a { color: #a78bfa; font-size: 12px; text-decoration: none; }
-    .footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <div class="bar">
-    <button type="button" class="btn btn-record" id="btnRecord" title="Gravar">● Gravar</button>
-    <button type="button" class="btn btn-pause" id="btnPause" title="Pausar / Retomar" disabled>⏸ Pausar</button>
-    <button type="button" class="btn btn-stop" id="btnStop" title="Parar e salvar" disabled>■ Stop</button>
-    <button type="button" class="btn btn-audio" id="btnAudio" title="Mute / Unmute áudio gravado" disabled>🔊 Áudio</button>
+    <button type="button" class="btn btn-record" id="btnRecord" data-i18n="btnRecord" data-i18n-title="btnRecordTitle"></button>
+    <button type="button" class="btn btn-pause" id="btnPause" data-i18n="btnPause" data-i18n-title="btnPauseTitle" disabled></button>
+    <button type="button" class="btn btn-stop" id="btnStop" data-i18n="btnStop" data-i18n-title="btnStopTitle" disabled></button>
+    <button type="button" class="btn btn-audio" id="btnAudio" data-i18n="btnAudio" data-i18n-title="btnAudioTitle" disabled></button>
   </div>
   <div class="row">
-    <label for="folder">Pasta</label>
+    <label for="folder" data-i18n="labelFolder"></label>
     <input type="text" id="folder" placeholder="Recordings/Video/" value="Recordings">
   </div>
   <div class="row">
-    <label for="filename">Arquivo</label>
+    <label for="filename" data-i18n="labelFile"></label>
     <input type="text" id="filename" placeholder="tab-2026-02-28-0900.webm" value="">
   </div>
   <div class="row">
-    <label for="recordMode">Modo</label>
-    <select id="recordMode" title="Vídeo + áudio ou só o áudio da aba">
-      <option value="video">Vídeo + áudio</option>
-      <option value="audio">Somente áudio</option>
+    <label for="recordMode" data-i18n="labelMode"></label>
+    <select id="recordMode" data-i18n-title="modeTitle">
+      <option value="video" data-i18n="modeVideo"></option>
+      <option value="audio" data-i18n="modeAudio"></option>
     </select>
   </div>
   <div class="status status-idle" id="status">
-    <span id="statusText">Idle</span>
+    <span id="statusText" data-i18n="statusIdle"></span>
     <span class="timer" id="timer">00:00</span>
   </div>
+  <div class="message" id="message" role="alert" hidden></div>
   <div class="footer">
-    <a href="#" id="linkRecorderPage" title="Abrir ou ir para a página de gravação">📄 Página de gravação</a>
+    <a href="#" id="linkRecorderPage" data-i18n="linkRecorderPage" data-i18n-title="linkRecorderPageTitle"></a>
   </div>
+  <script src="common.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

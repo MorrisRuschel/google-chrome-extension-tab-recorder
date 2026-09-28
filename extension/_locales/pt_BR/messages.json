@@ -1,0 +1,48 @@
+{
+  "extName": { "message": "Tab Recorder" },
+  "extDescription": { "message": "Grava vídeo e áudio ou só o áudio da aba atual; barra de comandos (Gravar / Parar / Salvar em…)" },
+
+  "btnRecord": { "message": "● Gravar" },
+  "btnRecordTitle": { "message": "Gravar a aba atual" },
+  "btnPause": { "message": "⏸ Pausar" },
+  "btnResume": { "message": "▶ Retomar" },
+  "btnPauseTitle": { "message": "Pausar / Retomar" },
+  "btnStop": { "message": "■ Parar" },
+  "btnStopTitle": { "message": "Parar e salvar" },
+  "btnAudio": { "message": "🔊 Áudio" },
+  "btnMuted": { "message": "🔇 Mudo" },
+  "btnAudioTitle": { "message": "Silenciar / reativar o áudio gravado" },
+
+  "labelFolder": { "message": "Pasta" },
+  "labelFile": { "message": "Arquivo" },
+  "labelMode": { "message": "Modo" },
+  "modeTitle": { "message": "Vídeo + áudio ou só o áudio da aba" },
+  "modeVideo": { "message": "Vídeo + áudio" },
+  "modeAudio": { "message": "Somente áudio" },
+
+  "statusIdle": { "message": "Aguardando…" },
+  "statusRecording": { "message": "Gravando" },
+  "statusRecordingAudio": { "message": "Gravando (áudio)" },
+  "statusPaused": { "message": "Pausado" },
+  "statusPausedAudio": { "message": "Pausado (áudio)" },
+  "statusSaving": { "message": "Salvando…" },
+
+  "linkRecorderPage": { "message": "📄 Página de gravação" },
+  "linkRecorderPageTitle": { "message": "Abrir ou ir para a página de gravação" },
+
+  "recorderTitle": { "message": "Tab Recorder — Gravação" },
+  "recorderAlert": { "message": "⚠️ Não feche esta aba. Ela precisa permanecer aberta para gravar vídeo e áudio." },
+  "historyTitle": { "message": "Últimas gravações" },
+  "historyClear": { "message": "Limpar histórico" },
+  "historyEmpty": { "message": "Nenhuma gravação ainda." },
+  "unsavedMessage": { "message": "A última gravação não foi salva." },
+  "btnRetrySave": { "message": "Salvar novamente" },
+  "btnDiscard": { "message": "Descartar" },
+
+  "errorNoActiveTab": { "message": "Erro: nenhuma aba ativa" },
+  "errorCaptureDefault": { "message": "captura não permitida" },
+  "errorPrefix": {
+    "message": "Erro: $ERROR$",
+    "placeholders": { "error": { "content": "$1" } }
+  }
+}
