@@ -17,7 +17,9 @@ const IDLE = {
   folder: DEFAULT_FOLDER,
   filename: DEFAULT_FILENAME,
   audioOnly: false,
-  muted: false
+  muted: false, // áudio da aba silenciado na gravação
+  mic: 'off', // off (não pedido) | pending | on | unavailable
+  micMuted: false
 };
 
 let rec = { ...IDLE };
@@ -110,6 +112,8 @@ function getStatus() {
     filename: rec.filename,
     audioOnly: rec.audioOnly,
     muted: rec.muted,
+    mic: rec.mic,
+    micMuted: rec.micMuted,
     error: lastError
   };
 }
@@ -125,7 +129,8 @@ const handlers = {
       timerStart: Date.now(),
       folder: sanitizeFolder(msg.folder),
       filename: sanitizeFilename(msg.filename),
-      audioOnly: msg.audioOnly === true
+      audioOnly: msg.audioOnly === true,
+      mic: msg.mic === true ? 'pending' : 'off'
     };
     lastError = null;
     await persist();
@@ -133,6 +138,7 @@ const handlers = {
       action: 'START_RECORDING',
       streamId: msg.streamId,
       audioOnly: rec.audioOnly,
+      mic: rec.mic === 'pending',
       path: savePath()
     });
     return { ok: true };
@@ -170,6 +176,23 @@ const handlers = {
     rec.muted = !rec.muted;
     await persist();
     sendToRecorder(rec.recorderTabId, { action: 'SET_MUTED', muted: rec.muted });
+    return { ok: true };
+  },
+
+  async TOGGLE_MIC() {
+    if (!isActive() || (rec.mic !== 'on' && rec.mic !== 'pending')) return { ok: false };
+    rec.micMuted = !rec.micMuted;
+    await persist();
+    sendToRecorder(rec.recorderTabId, { action: 'SET_MIC_MUTED', muted: rec.micMuted });
+    return { ok: true };
+  },
+
+  // O recorder informa se conseguiu (ou deixou de conseguir) usar o microfone.
+  async MIC_STATE(msg, sender) {
+    if (sender.tab?.id === rec.recorderTabId && rec.state !== 'idle' && rec.mic !== 'off') {
+      rec.mic = msg.available ? 'on' : 'unavailable';
+      await persist();
+    }
     return { ok: true };
   },
 
@@ -242,8 +265,8 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
   if (tabId === rec.recorderTabId && rec.state !== 'idle') await reset();
 });
 
-// Remove chaves de estado usadas pela versão 1.0 (agora em storage.session).
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
+  // Remove chaves de estado usadas pela versão 1.0 (agora em storage.session).
   chrome.storage.local.remove([
     'recorderTabId',
     'recordingState',
@@ -251,4 +274,12 @@ chrome.runtime.onInstalled.addListener(() => {
     'downloadFolder',
     'downloadFilename'
   ]);
+
+  // Mostra a página de boas-vindas (ativação do microfone) uma única vez, na instalação ou
+  // na primeira atualização para uma versão com microfone.
+  const { welcomeShown } = await chrome.storage.local.get('welcomeShown');
+  if (!welcomeShown) {
+    await chrome.storage.local.set({ welcomeShown: true });
+    chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') });
+  }
 });

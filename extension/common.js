@@ -18,6 +18,18 @@ function applyI18n() {
   document.querySelectorAll('[data-i18n-alt]').forEach((el) => { el.alt = t(el.dataset.i18nAlt); });
 }
 
+/** Vai para a aba com esta página da extensão, ou abre uma nova. */
+async function openExtensionPage(path) {
+  const url = chrome.runtime.getURL(path);
+  const [tab] = await chrome.tabs.query({ url });
+  if (tab) {
+    chrome.tabs.update(tab.id, { active: true });
+    chrome.windows.update(tab.windowId, { focused: true });
+  } else {
+    chrome.tabs.create({ url });
+  }
+}
+
 function isActiveState(state) {
   return state === 'recording' || state === 'paused';
 }
@@ -30,7 +42,7 @@ function statusLabel(s) {
 }
 
 /**
- * Liga os botões Pausar / Parar / Áudio e o painel de status ao background, com poll de status.
+ * Liga os botões Pausar / Parar / Aba / Mic e o painel de status ao background, com poll de status.
  * options.stopPayload(): campos extras da mensagem STOP (pasta/arquivo).
  * options.onStatus(status): chamado a cada atualização de status.
  */
@@ -38,20 +50,26 @@ function initControls(options = {}) {
   const btnPause = document.getElementById('btnPause');
   const btnStop = document.getElementById('btnStop');
   const btnAudio = document.getElementById('btnAudio');
+  const btnMic = document.getElementById('btnMic');
+  const micNote = document.getElementById('micNote');
   const statusEl = document.getElementById('status');
   const statusText = document.getElementById('statusText');
   const timerEl = document.getElementById('timer');
 
   function render(s) {
     const active = isActiveState(s.state);
+    const micUsable = s.mic === 'on' || s.mic === 'pending';
     statusText.textContent = statusLabel(s);
     timerEl.textContent = s.timer || '00:00';
     statusEl.className = 'status status-' + s.state;
     btnPause.disabled = !active;
     btnStop.disabled = !active;
     btnAudio.disabled = !active;
+    btnMic.disabled = !active || !micUsable;
     btnPause.textContent = t(s.state === 'paused' ? 'btnResume' : 'btnPause');
     btnAudio.textContent = t(s.muted ? 'btnMuted' : 'btnAudio');
+    btnMic.textContent = t(s.micMuted ? 'btnMicMuted' : 'btnMic');
+    micNote.hidden = !(active && s.mic === 'unavailable');
     if (options.onStatus) options.onStatus(s);
   }
 
@@ -74,6 +92,7 @@ function initControls(options = {}) {
     send({ action: 'STOP', ...(options.stopPayload ? options.stopPayload() : {}) })
   );
   btnAudio.addEventListener('click', () => send({ action: 'TOGGLE_MUTE' }));
+  btnMic.addEventListener('click', () => send({ action: 'TOGGLE_MIC' }));
 
   refresh();
   setInterval(refresh, 500);
