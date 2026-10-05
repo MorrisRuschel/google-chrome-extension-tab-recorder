@@ -25,6 +25,7 @@
       border: 1px solid #78350f;
     }
     .status { margin-bottom: 14px; }
+    .mic-note { margin: -6px 0 14px; }
     .unsaved { margin: -6px 0 14px; }
     .unsaved .bar { margin: 8px 0 0; }
     .unsaved .btn { background: #7f1d1d; color: #fff; }
@@ -75,11 +76,13 @@
     <button type="button" class="btn btn-pause" id="btnPause" data-i18n="btnPause" data-i18n-title="btnPauseTitle" disabled></button>
     <button type="button" class="btn btn-stop" id="btnStop" data-i18n="btnStop" data-i18n-title="btnStopTitle" disabled></button>
     <button type="button" class="btn btn-audio" id="btnAudio" data-i18n="btnAudio" data-i18n-title="btnAudioTitle" disabled></button>
+    <button type="button" class="btn btn-mic" id="btnMic" data-i18n="btnMic" data-i18n-title="btnMicTitle" disabled></button>
   </div>
   <div class="status status-idle" id="status">
     <span id="statusText" data-i18n="statusIdle"></span>
     <span class="timer" id="timer">00:00</span>
   </div>
+  <div class="note mic-note" id="micNote" data-i18n="micUnavailable" hidden></div>
   <div class="message unsaved" id="unsaved" role="alert" hidden>
     <span data-i18n="unsavedMessage"></span>
     <div class="bar">

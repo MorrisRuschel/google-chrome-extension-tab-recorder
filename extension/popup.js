@@ -1,6 +1,6 @@
 /**
- * Popup: lê/grava pasta, arquivo e modo no storage e inicia a gravação.
- * Os controles de Pausar / Parar / Áudio e o status vêm de common.js.
+ * Popup: lê/grava pasta, arquivo, modo e microfone no storage e inicia a gravação.
+ * Os controles de Pausar / Parar / Aba / Mic e o status vêm de common.js.
  * @author Morris Ruschel (Mad Wolf)
  */
 (function () {
@@ -10,6 +10,8 @@
   const folderInput = document.getElementById('folder');
   const filenameInput = document.getElementById('filename');
   const recordModeSelect = document.getElementById('recordMode');
+  const includeMicInput = document.getElementById('includeMic');
+  const micSetupEl = document.getElementById('micSetup');
   const messageEl = document.getElementById('message');
   const recorderUrl = chrome.runtime.getURL('recorder.html');
 
@@ -19,6 +21,7 @@
   let recordClickInProgress = false;
   let lastStatus = { state: 'idle' };
   let firstStatus = true;
+  let micPermission = null; // granted | denied | prompt (permissão da extensão, não do site)
 
   function isAudioOnlyMode() {
     return recordModeSelect.value === 'audio';
@@ -41,12 +44,19 @@
   }
 
   async function loadStorage() {
-    const data = await chrome.storage.local.get({ folder: 'Recordings', filename: '', recordMode: 'video' });
+    const data = await chrome.storage.local.get({
+      folder: 'Recordings',
+      filename: '',
+      recordMode: 'video',
+      includeMic: true
+    });
     // Durante uma gravação, os campos mostram o que o background está usando (ver onStatus).
     if (!firstStatus && lastStatus.state !== 'idle') return;
     folderInput.value = data.folder || 'Recordings';
     recordModeSelect.value = data.recordMode === 'audio' ? 'audio' : 'video';
     filenameInput.value = data.filename || defaultFilename(isAudioOnlyMode());
+    includeMicInput.checked = data.includeMic !== false;
+    updateMicSetup();
   }
 
   function saveStorage() {
@@ -54,8 +64,33 @@
     chrome.storage.local.set({
       folder: folderInput.value.trim() || 'Recordings',
       filename: AUTO_FILENAME.test(filename) ? '' : filename,
-      recordMode: isAudioOnlyMode() ? 'audio' : 'video'
+      recordMode: isAudioOnlyMode() ? 'audio' : 'video',
+      includeMic: includeMicInput.checked
     });
+  }
+
+  /** Mostra o aviso "ative o microfone" quando a opção está marcada mas a permissão não foi dada. */
+  function updateMicSetup() {
+    micSetupEl.hidden = !(
+      includeMicInput.checked &&
+      !includeMicInput.disabled &&
+      micPermission &&
+      micPermission !== 'granted'
+    );
+  }
+
+  async function watchMicPermission() {
+    try {
+      const status = await navigator.permissions.query({ name: 'microphone' });
+      micPermission = status.state;
+      status.onchange = () => {
+        micPermission = status.state;
+        updateMicSetup();
+      };
+    } catch (_) {
+      micPermission = null;
+    }
+    updateMicSetup();
   }
 
   function onStatus(s) {
@@ -65,10 +100,13 @@
       folderInput.value = s.folder;
       filenameInput.value = s.filename;
       recordModeSelect.value = s.audioOnly ? 'audio' : 'video';
+      includeMicInput.checked = s.mic !== 'off';
     }
     firstStatus = false;
     btnRecord.disabled = busy || recordClickInProgress;
     recordModeSelect.disabled = busy;
+    includeMicInput.disabled = busy;
+    updateMicSetup();
     if (s.state === 'idle' && s.error && messageEl.hidden) showMessage(t('errorPrefix', [s.error]));
   }
 
@@ -131,7 +169,8 @@
         recorderTabId,
         folder: folderInput.value,
         filename: currentFilename(audioOnly),
-        audioOnly
+        audioOnly,
+        mic: includeMicInput.checked
       });
       if (!res || !res.ok) throw new Error(res && res.error);
 
@@ -153,17 +192,21 @@
     if (!name || AUTO_FILENAME.test(name)) filenameInput.value = defaultFilename(isAudioOnlyMode());
     saveStorage();
   });
-
-  document.getElementById('linkRecorderPage').addEventListener('click', async (e) => {
-    e.preventDefault();
-    const tabs = await chrome.tabs.query({ url: recorderUrl });
-    if (tabs.length > 0) {
-      chrome.tabs.update(tabs[0].id, { active: true });
-      chrome.windows.update(tabs[0].windowId, { focused: true });
-    } else {
-      chrome.tabs.create({ url: recorderUrl });
-    }
+  includeMicInput.addEventListener('change', () => {
+    saveStorage();
+    updateMicSetup();
   });
 
+  function linkTo(id, page) {
+    document.getElementById(id).addEventListener('click', (e) => {
+      e.preventDefault();
+      openExtensionPage(page);
+    });
+  }
+  linkTo('linkRecorderPage', 'recorder.html');
+  linkTo('linkWelcome', 'welcome.html');
+  linkTo('linkMicSetup', 'welcome.html');
+
   loadStorage();
+  watchMicPermission();
 })();

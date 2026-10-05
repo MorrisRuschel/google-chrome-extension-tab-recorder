@@ -6,6 +6,8 @@
   <link rel="stylesheet" href="common.css">
   <style>
     body { padding: 10px; }
+    .bar { gap: 6px; }
+    .bar .btn { padding: 6px 9px; }
     .row {
       display: flex;
       gap: 8px;
@@ -22,8 +24,23 @@
       color: #e4e4e7;
       font-size: 12px;
     }
+    .row .check {
+      flex: 1;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      color: #e4e4e7;
+      cursor: pointer;
+    }
+    .row .check input { flex: none; margin: 0; }
     .status { margin-top: 10px; }
-    .footer { margin-top: 12px; padding-top: 8px; border-top: 1px solid #3f3f46; }
+    .footer {
+      margin-top: 12px;
+      padding-top: 8px;
+      border-top: 1px solid #3f3f46;
+      display: flex;
+      justify-content: space-between;
+    }
   </style>
 </head>
 <body>
@@ -32,6 +49,7 @@
     <button type="button" class="btn btn-pause" id="btnPause" data-i18n="btnPause" data-i18n-title="btnPauseTitle" disabled></button>
     <button type="button" class="btn btn-stop" id="btnStop" data-i18n="btnStop" data-i18n-title="btnStopTitle" disabled></button>
     <button type="button" class="btn btn-audio" id="btnAudio" data-i18n="btnAudio" data-i18n-title="btnAudioTitle" disabled></button>
+    <button type="button" class="btn btn-mic" id="btnMic" data-i18n="btnMic" data-i18n-title="btnMicTitle" disabled></button>
   </div>
   <div class="row">
     <label for="folder" data-i18n="labelFolder"></label>
@@ -48,13 +66,23 @@
       <option value="audio" data-i18n="modeAudio"></option>
     </select>
   </div>
+  <div class="row">
+    <label for="includeMic" data-i18n="labelMic"></label>
+    <label class="check"><input type="checkbox" id="includeMic"> <span data-i18n="micInclude"></span></label>
+  </div>
+  <div class="note" id="micSetup" hidden>
+    <span data-i18n="micNeedsSetup"></span>
+    <a href="#" id="linkMicSetup" data-i18n="btnEnableMic"></a>
+  </div>
   <div class="status status-idle" id="status">
     <span id="statusText" data-i18n="statusIdle"></span>
     <span class="timer" id="timer">00:00</span>
   </div>
+  <div class="note" id="micNote" data-i18n="micUnavailable" hidden></div>
   <div class="message" id="message" role="alert" hidden></div>
   <div class="footer">
     <a href="#" id="linkRecorderPage" data-i18n="linkRecorderPage" data-i18n-title="linkRecorderPageTitle"></a>
+    <a href="#" id="linkWelcome" data-i18n="linkMicSettings" data-i18n-title="linkMicSettingsTitle"></a>
   </div>
   <script src="common.js"></script>
   <script src="popup.js"></script>

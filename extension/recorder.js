@@ -1,6 +1,7 @@
 /**
  * Página do recorder: recebe comandos do background por porta, grava com MediaRecorder e salva o arquivo.
- * Suporta pause/resume e mute do áudio gravado (o áudio continua audível na aba).
+ * Mistura o áudio da aba com o microfone (a aba não contém a voz de quem está gravando).
+ * Suporta pause/resume e mute separado do áudio da aba e do microfone na gravação.
  * @author Morris Ruschel (Mad Wolf)
  */
 (function () {
@@ -10,13 +11,16 @@
   const MAX_HISTORY = 20;
 
   let mediaRecorder = null;
-  let stream = null;
+  let stream = null; // captura da aba
+  let micStream = null;
   let audioContext = null;
-  let recordGain = null;
+  let tabGain = null;
+  let micGain = null;
   let recordedChunks = [];
   let starting = false;
   let stopRequested = false;
   let muted = false;
+  let micMuted = false;
   let audioOnly = false;
   let savePath = 'Recordings/tab-recording.webm';
   let unsaved = null; // { blob, path } de uma gravação cujo download falhou ou foi cancelado
@@ -40,10 +44,31 @@
 
   function releaseStream() {
     if (stream) stream.getTracks().forEach((t) => t.stop());
+    if (micStream) micStream.getTracks().forEach((t) => t.stop());
     if (audioContext) audioContext.close().catch(() => {});
     stream = null;
+    micStream = null;
     audioContext = null;
-    recordGain = null;
+    tabGain = null;
+    micGain = null;
+  }
+
+  /**
+   * Microfone com cancelamento de eco (remove a voz dos outros que vaza do alto-falante).
+   * Só é pedido se a permissão já foi concedida na página de boas-vindas: esta aba fica em
+   * segundo plano e um pedido de permissão aqui ficaria invisível, travando a gravação.
+   */
+  async function getMicStream() {
+    try {
+      const { state } = await navigator.permissions.query({ name: 'microphone' });
+      if (state !== 'granted') return null;
+      return await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
+    } catch (err) {
+      console.warn('microphone unavailable', err);
+      return null;
+    }
   }
 
   async function startRecording(msg) {
@@ -51,6 +76,7 @@
     starting = true;
     stopRequested = false;
     muted = false; // o background começa cada gravação sem mute
+    micMuted = false;
     audioOnly = msg.audioOnly === true;
     if (msg.path) savePath = msg.path;
     try {
@@ -60,14 +86,29 @@
         video: audioOnly ? false : tabSource
       });
 
+      if (msg.mic) {
+        micStream = await getMicStream();
+        notify({ action: 'MIC_STATE', available: micStream != null });
+      }
+
       audioContext = new AudioContext();
+      const dest = audioContext.createMediaStreamDestination();
       const source = audioContext.createMediaStreamSource(stream);
       // A captura silencia a aba: reproduz o áudio direto na saída, sem passar pelo mute da gravação.
       source.connect(audioContext.destination);
-      recordGain = audioContext.createGain();
-      recordGain.gain.value = muted ? 0 : 1;
-      const dest = audioContext.createMediaStreamDestination();
-      source.connect(recordGain).connect(dest);
+      tabGain = audioContext.createGain();
+      tabGain.gain.value = muted ? 0 : 1;
+      source.connect(tabGain).connect(dest);
+
+      if (micStream) {
+        // O microfone vai só para a gravação, nunca para o alto-falante (evita eco/retorno).
+        micGain = audioContext.createGain();
+        micGain.gain.value = micMuted ? 0 : 1;
+        audioContext.createMediaStreamSource(micStream).connect(micGain).connect(dest);
+        micStream.getAudioTracks().forEach((track) =>
+          track.addEventListener('ended', () => notify({ action: 'MIC_STATE', available: false }))
+        );
+      }
 
       const tracks = [...(audioOnly ? [] : stream.getVideoTracks()), ...dest.stream.getAudioTracks()];
       const options = audioOnly
@@ -216,7 +257,11 @@
         break;
       case 'SET_MUTED':
         muted = msg.muted === true;
-        if (recordGain) recordGain.gain.value = muted ? 0 : 1;
+        if (tabGain) tabGain.gain.value = muted ? 0 : 1;
+        break;
+      case 'SET_MIC_MUTED':
+        micMuted = msg.muted === true;
+        if (micGain) micGain.gain.value = micMuted ? 0 : 1;
         break;
     }
   }
